@@ -1,0 +1,69 @@
+# render.yaml
+services:
+  # Web Service for Flask App
+  - type: web
+    name: pricepulse-web
+    env: python # Or python3
+    region: oregon # Or your preferred region
+    plan: free # Or your chosen plan
+    buildCommand: |
+      pip install --upgrade pip
+      pip install -r requirements.txt
+      # Optional: Flask DB migrations if you set them up, e.g., flask db upgrade
+      # For initial setup with SQLAlchemy's db.create_all():
+      # This will run when the web service starts if initialize_application_startup is called.
+      # If using a separate migration command, you'd put it here.
+    startCommand: gunicorn app:app # Tells Render to use Gunicorn to run the 'app' object from 'app.py'
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.9.18 # Match your pyenv version
+      - key: DATABASE_URL
+        fromDatabase:
+          name: pricepulse-db # The name of your Render PostgreSQL service
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true # Render can auto-generate a secret key
+      - key: GMAIL_USER
+        sync: false # Will be set in Render's secret manager/dashboard
+      - key: GMAIL_APP_PASSWORD
+        sync: false # Will be set in Render's secret manager/dashboard
+      - key: GEMINI_API_KEY
+        sync: false # Will be set in Render's secret manager/dashboard
+      # Add FLASK_APP=app.py if needed, though Gunicorn command specifies it
+      # Add FLASK_ENV=production (or development for debugging on Render, not recommended long term)
+
+  # Background Worker for APScheduler
+  - type: worker
+    name: pricepulse-scheduler
+    env: python
+    region: oregon # Match web service region
+    plan: free
+    buildCommand: |
+      pip install --upgrade pip
+      pip install -r requirements.txt
+    startCommand: python run_scheduler.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.9.18
+      - key: DATABASE_URL
+        fromDatabase:
+          name: pricepulse-db
+          property: connectionString
+      - key: SECRET_KEY # For Flask app context if needed by extensions
+        fromService: # Get from web service if it's generated there
+          type: web
+          name: pricepulse-web
+          envVarKey: SECRET_KEY
+      - key: GMAIL_USER
+        sync: false
+      - key: GMAIL_APP_PASSWORD
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+
+databases:
+  - name: pricepulse-db # This should match the name of the PostgreSQL service you created
+    region: oregon
+    plan: free # if you created it on free plan
+    # If you created DB via dashboard, Render might manage this part automatically
+    # when you link it via `fromDatabase`.

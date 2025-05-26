@@ -23,9 +23,15 @@ print("DEBUG: Imports in app.py successful")
 load_dotenv() # Load environment variables from .env file
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///pricepulse.db' # Database file will be pricepulse.db
+# Get the database URL from the environment variable set by Render (or your .env for local)
+# RENDER_POSTGRES_INTERNAL_URL is an example, Render might use DATABASE_URL
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL") # Render typically sets DATABASE_URL for its PostgreSQL
+if SQLALCHEMY_DATABASE_URL and SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
+    SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = SQLALCHEMY_DATABASE_URL or 'sqlite:///pricepulse.db' # Fallback to SQLite for local if DATABASE_URL not set
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.secret_key = os.urandom(24) # Needed for flash messages to work
+app.secret_key = os.getenv("SECRET_KEY", os.urandom(24)) # Also use env var for secret key
 
 print("DEBUG: Flask app initialized")
 
