@@ -40,6 +40,9 @@ print("DEBUG: Flask app configured")
 
 db.init_app(app)
 print("DEBUG: Database initialized with app")
+with app.app_context():
+    db.create_all()
+    print("DEBUG (app.py - WEB): db.create_all() CALLED ON APP INITIALIZATION.")
 
 # --- Global Scheduler Instance ---
 # This instance is used by the web app to ADD job definitions.
