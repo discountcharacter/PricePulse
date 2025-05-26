@@ -1,42 +1,45 @@
 # llm_helper.py
 import google.generativeai as genai
 import os
-import json # For parsing the LLM's JSON response
+import json
 
-# Configure the API key when the module is loaded.
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-MODEL_NAME = "gemini-1.5-flash" # Using a standard, recent model name.
+
+# Use the model name prefixed with "models/" as shown in working examples
+# Let's try "models/gemini-1.5-flash-latest" first as "latest" is often a good alias.
+# If that specific alias doesn't work, "models/gemini-pro" is a common alternative.
+MODEL_NAME_FOR_API = "models/gemini-1.5-flash-latest"
+# MODEL_NAME_FOR_API = "models/gemini-pro" # Alternative to try if flash doesn't work
+
+IS_GEMINI_CONFIGURED = False
 
 if GEMINI_API_KEY:
     try:
         genai.configure(api_key=GEMINI_API_KEY)
-        print(f"LLM_HELPER.PY: Gemini API Key configured successfully. Attempting to use model: {MODEL_NAME}")
+        print(f"LLM_HELPER.PY: Gemini API Key configured successfully. Will attempt to use model: {MODEL_NAME_FOR_API}")
+        IS_GEMINI_CONFIGURED = True
     except Exception as e:
         print(f"LLM_HELPER.PY: Error configuring Gemini API Key: {e}")
-        GEMINI_API_KEY = None # Nullify if configuration fails
+        GEMINI_API_KEY = None
+        IS_GEMINI_CONFIGURED = False
 else:
     print("LLM_HELPER.PY WARNING: GEMINI_API_KEY not found in environment variables. LLM features will be disabled.")
 
 def extract_metadata_and_generate_queries(amazon_product_name, amazon_product_url):
-    """
-    Uses Gemini to extract product metadata and generate search queries for other platforms.
-    """
     print(f"LLM_HELPER.PY: extract_metadata_and_generate_queries called with Name: '{amazon_product_name}' URL: '{amazon_product_url}'")
 
-    if not GEMINI_API_KEY:
-        print("LLM_HELPER.PY: Gemini API Key is not configured. Skipping LLM processing.")
-        return {
-            "metadata": {"Error": "LLM API Key not configured"},
-            "search_queries": {}
-        }
+    if not IS_GEMINI_CONFIGURED: # Check the flag
+        print("LLM_HELPER.PY: Gemini API Key is not configured or configuration failed. Skipping LLM processing.")
+        return {"metadata": {"Error": "LLM API Key not configured or configuration failed"}, "search_queries": {}}
 
     try:
-        model = genai.GenerativeModel(MODEL_NAME)
-        print(f"LLM_HELPER.PY: Gemini Model '{MODEL_NAME}' initialized successfully.")
+        # Initialize the generative model WITH the "models/" prefix
+        model = genai.GenerativeModel(MODEL_NAME_FOR_API)
+        print(f"LLM_HELPER.PY: Gemini Model '{MODEL_NAME_FOR_API}' initialized successfully.")
     except Exception as e:
-        print(f"LLM_HELPER.PY: Error initializing Gemini Model '{MODEL_NAME}': {e}") # THIS IS KEY
-        print(f"LLM_HELPER.PY: This might be due to an invalid API key, incorrect model name, or network/quota issue.")
-        return {"metadata": {"Error": f"Failed to initialize LLM Model ('{MODEL_NAME}')"}, "search_queries": {}} # THIS IS WHAT GENERATES THE FLASHED MESSAGE
+        print(f"LLM_HELPER.PY: Error initializing Gemini Model '{MODEL_NAME_FOR_API}': {e}")
+        print(f"LLM_HELPER.PY: This might be due to an invalid API key, incorrect model name (ensure it's prefixed with 'models/'), or network/quota issue.")
+        return {"metadata": {"Error": f"Failed to initialize LLM Model ('{MODEL_NAME_FOR_API}')"}, "search_queries": {}}
 
     prompt = f"""
     You are an expert e-commerce product analyst.
@@ -65,7 +68,7 @@ def extract_metadata_and_generate_queries(amazon_product_name, amazon_product_ur
     Focus on accuracy for finding the *identical* product. Ensure the entire output is a single, valid JSON object.
     """
 
-    print(f"LLM_HELPER.PY: Sending prompt to Gemini model '{MODEL_NAME}' for product: '{amazon_product_name}'")
+    print(f"LLM_HELPER.PY: Sending prompt to Gemini model '{MODEL_NAME_FOR_API}' for product: '{amazon_product_name}'")
     try:
         response = model.generate_content(prompt)
         
@@ -97,6 +100,8 @@ def extract_metadata_and_generate_queries(amazon_product_name, amazon_product_ur
 print("LLM_HELPER.PY: 'extract_metadata_and_generate_queries' function has been defined by Python interpreter.")
 
 if __name__ == '__main__':
+    # ... (keep your existing __main__ block for direct testing, 
+    # but ensure it also uses MODEL_NAME_FOR_API when calling genai.GenerativeModel) ...
     print("LLM_HELPER.PY: Running __main__ block for direct test...")
     from dotenv import load_dotenv
     project_root = os.path.dirname(os.path.abspath(__file__))
@@ -114,8 +119,8 @@ if __name__ == '__main__':
             test_name = "Apple iPhone 15 (128 GB) - Pink"
             test_url = "https://www.amazon.in/Apple-iPhone-15-128-GB/dp/B0CHX3TW6X/"
             
-            print(f"\nLLM_HELPER_TEST: Requesting metadata and queries for: '{test_name}' using model '{MODEL_NAME}'")
-            result = extract_metadata_and_generate_queries(test_name, test_url)
+            print(f"\nLLM_HELPER_TEST: Requesting metadata and queries for: '{test_name}' using model '{MODEL_NAME_FOR_API}'") # Use MODEL_NAME_FOR_API
+            result = extract_metadata_and_generate_queries(test_name, test_url) # Call the function
             
             print("\n--- LLM Test Result (from __main__) ---")
             print(json.dumps(result, indent=2))

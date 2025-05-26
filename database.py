@@ -1,6 +1,4 @@
-print("DEBUG: app.py script started")
-from dotenv import load_dotenv
-load_dotenv()
+
 from flask_sqlalchemy import SQLAlchemy
 import datetime
 
