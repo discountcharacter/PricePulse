@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ product.name if product else "Product Details" }} - PricePulse</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="{{ url_for('static', filename='js/chart.min.js') }}"></script>
+</head>
+<body>
+
+    <div class="container">
+        <a href="{{ url_for('home') }}">&laquo; Back to All Products</a>
+
+        {% if product %}
+            <h1>{{ product.name or "Product Name Not Available" }}</h1>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                <ul class="flashes">
+                {% for category, message in messages %}
+                  <li class="{{ category }}">{{ message }}</li>
+                {% endfor %}
+                </ul>
+              {% endif %}
+            {% endwith %}
+
+            <div class="product-overview">
+                <img src="{{ product.image_url if product.image_url and product.image_url != 'N/A' and product.image_url != 'Image not found' else url_for('static', filename='images/placeholder.png') }}"
+                     alt="{{ product.name or 'Product image' }}" class="product-image-large">
+                <div class="product-meta">
+                    <p><strong>URL:</strong> <a href="{{ product.url }}" target="_blank" rel="noopener noreferrer">{{ product.url }}</a></p>
+
+                    {% if prices %}
+                        <p><strong>Current Price: ₹{{ "%.2f"|format(prices[-1].price) }}</strong>
+                           (as of {{ prices[-1].timestamp.strftime('%Y-%m-%d %H:%M') }})</p>
+                    {% elif product.prices %} {# Fallback, though 'prices' variable should be preferred if passed from route #}
+                         <p><strong>Current Price: ₹{{ "%.2f"|format(product.prices[-1].price) }}</strong>
+                           (as of {{ product.prices[-1].timestamp.strftime('%Y-%m-%d %H:%M') }})</p>
+                    {% else %}
+                        <p><strong>Current Price:</strong> Price data not yet available.</p>
+                    {% endif %}
+
+                    {% if product.created_at %}
+                        <p><em>Tracking since: {{ product.created_at.strftime('%Y-%m-%d %H:%M') }}</em></p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <h2>Price History Graph</h2>
+            <div class="chart-container">
+                <canvas id="priceHistoryChart"></canvas>
+            </div>
+
+            <div class="bonus-section email-alert-form">
+                <h3>Set Price Drop Alert</h3>
+                <form action="{{ url_for('add_alert', product_id=product.id) }}" method="POST">
+                    <label for="email">Your Email:</label>
+                    <input type="email" id="email" name="email" required>
+                    <label for="target_price">Notify me when price drops below ₹:</label>
+                    <input type="number" id="target_price" name="target_price" step="0.01" min="0" required>
+                    <button type="submit">Set Alert</button>
+                </form>
+            </div>
+
+            <div class="bonus-section multi-platform-comparison">
+                <h3>AI Multi-Platform Price Check (Bonus)</h3>
+                {% if product.name and product.name not in ["N/A", "Name not found"] %}
+                    <form action="{{ url_for('trigger_product_comparison', product_id=product.id) }}" method="POST" style="margin-bottom: 15px;">
+                        <button type="submit" class="button-secondary">Compare on Other Platforms (AI)</button>
+                    </form>
+                    <p><em>Note: Comparison results will appear as a flashed message above. Scraping other platforms is experimental and may not always succeed. Check server logs for details.</em></p>
+                    {# 
+                    Placeholder for displaying actual comparison data if you store it.
+                    #}
+                {% else %}
+                    <p>Product name is not detailed enough to attempt AI comparison.</p>
+                {% endif %}
+            </div>
+            {% else %}
+            <h1>Product Not Found</h1>
+            <p>The product you are looking for does not exist or could not be retrieved.</p>
+        {% endif %}
+    </div>
+    
+    <script>
+        {% if product and product.id %}
+            const productId = parseInt("{{ product.id }}", 10);
+        {% else %}
+            const productId = null;
+            console.warn("DEBUG from product_detail.html: Product ID is not available for this page. Chart or product-specific features might not load properly.");
+        {% endif %}
+    </script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

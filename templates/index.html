@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>PricePulse - Track Products</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>PricePulse - E-Commerce Price Tracker</h1>
+
+        {# Display flashed messages (errors, successes, info) #}
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <ul class="flashes">
+            {% for category, message in messages %}
+              <li class="{{ category }}">{{ message }}</li>
+            {% endfor %}
+            </ul>
+          {% endif %}
+        {% endwith %}
+
+        {# Form to submit a new product URL for tracking #}
+        <form action="{{ url_for('track_product') }}" method="POST" class="track-form">
+            <label for="product_url">Enter Amazon Product URL:</label>
+            <input type="url" id="product_url" name="product_url" required placeholder="https://www.amazon.in/dp/...">
+            <button type="submit">Track Product</button>
+        </form>
+
+        <h2>Tracked Products</h2>
+        <div class="product-list">
+            {# Check if there are any products to display #}
+            {% if products %}
+                {# Loop through each tracked product #}
+                {% for product in products %}
+                <div class="product-item">
+                    <a href="{{ url_for('product_detail', product_id=product.id) }}">
+                        <img src="{{ product.image_url if product.image_url and product.image_url != 'N/A' and product.image_url != 'Image not found' else url_for('static', filename='images/placeholder.png') }}" alt="{{ product.name or 'Product image' }}" class="product-thumbnail">
+                        <div class="product-item-name">{{ product.name or "Product Name Pending..." }}</div>
+                        
+                        {# Display current price.
+                           IMPORTANT: This assumes 'product.prices' is ordered by timestamp ascending,
+                           so the last item is the most recent. For reliability, ensure this ordering
+                           is defined in your Product model's 'prices' relationship in database.py
+                           (e.g., order_by="PriceHistory.timestamp.asc()"). #}
+                        {% if product.prices %}
+                            <div class="current-price">Current: ₹{{ "%.2f"|format(product.prices[-1].price) }}</div>
+                        {% else %}
+                            <div class="current-price">Fetching initial price...</div>
+                        {% endif %}
+                    </a>
+                    {# Form for the delete button #}
+                    <form action="{{ url_for('delete_product', product_id=product.id) }}" method="POST" style="display: inline;">
+                        <button type="submit" class="delete-button"
+                                 onclick="return confirm('Are you sure?');">
+                            Delete
+                        </button>
+                    </form>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p>No products are being tracked yet. Add one above!</p>
+            {% endif %}
+        </div>
+    </div>
+
+    {# General JavaScript file - ensure it handles cases where page-specific elements are not present #}
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
